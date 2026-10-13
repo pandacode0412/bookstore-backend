@@ -1,0 +1,35 @@
+{
+  "name": "bookstore-backend",
+  "private": true,
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "build": "nest build",
+    "start:prod": "node dist/main.js",
+    "db:generate": "prisma generate",
+    "db:sync": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:migrate": "prisma migrate dev",
+    "test": "npm run build && node --test test/catalog.service.test.mjs test/auth.service.test.mjs test/orders.service.test.mjs test/wishlist.service.test.mjs test/admin.service.test.mjs test/swagger-document.test.mjs"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@nestjs/swagger": "^11.4.7",
+    "@prisma/client": "6.19.3",
+    "bcryptjs": "^3.0.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.10",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.15.0",
+    "prisma": "6.19.3",
+    "tsx": "^4.20.0",
+    "typescript": "~5.8.3"
+  }
+}

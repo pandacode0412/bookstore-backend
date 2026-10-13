@@ -1,0 +1,525 @@
+openapi: 3.0.3
+info:
+  title: Bookstore E-commerce API
+  version: 1.0.0-draft
+  description: |-
+    MVP API contract for Bookstore. The public catalog routes (health, books,
+    book detail, categories, and session authentication) are implemented;
+    cart, order, and admin routes remain planned.
+servers:
+  - url: http://localhost:4000/api
+    description: Local Docker Compose
+security:
+  - sessionCookie: []
+tags:
+  - name: Health
+  - name: Auth
+  - name: Catalog
+  - name: Cart
+  - name: Wishlist
+  - name: Addresses
+  - name: Orders
+  - name: Admin
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Starter health endpoint
+      security: []
+      responses:
+        '200':
+          description: Health response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  app: { type: string, example: bookstore-backend }
+                  stage: { type: string, example: starter }
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register customer
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201': { description: User created and signed in; sets session and CSRF cookies, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and create HttpOnly session cookie
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200': { description: Session cookie set, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: End current session
+      responses:
+        '204': { description: Session invalidated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Current authenticated user
+      responses:
+        '200': { description: Current user, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /categories:
+    get:
+      tags: [Catalog]
+      summary: List public categories containing at least one published book
+      security: []
+      responses:
+        '200': { description: Categories, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Category' } } } } }
+  /books:
+    get:
+      tags: [Catalog]
+      summary: List published books
+      description: Searches title case-insensitively. Category is a category slug. Price sort uses `priceVnd` (the base/list price), then newest first for a stable tie-breaker.
+      security: []
+      parameters:
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 50, default: 12 } }
+        - { in: query, name: q, schema: { type: string, maxLength: 100 } }
+        - { in: query, name: category, schema: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }, description: Category slug filter }
+        - { in: query, name: sort, schema: { type: string, enum: [newest, price_asc, price_desc], default: newest }, description: Sort order }
+      responses:
+        '200': { description: Book page, content: { application/json: { schema: { $ref: '#/components/schemas/BookPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /books/{slug}:
+    get:
+      tags: [Catalog]
+      summary: Get published book by slug
+      security: []
+      parameters:
+        - { in: path, name: slug, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Book detail, content: { application/json: { schema: { $ref: '#/components/schemas/BookDetail' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /cart:
+    get:
+      tags: [Cart]
+      summary: Get my persistent cart
+      responses:
+        '200': { description: Cart, content: { application/json: { schema: { $ref: '#/components/schemas/Cart' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /cart/items:
+    post:
+      tags: [Cart]
+      summary: Add or increase a cart item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CartItemInput' }
+      responses:
+        '200': { description: Updated cart, content: { application/json: { schema: { $ref: '#/components/schemas/Cart' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /cart/items/{bookId}:
+    parameters:
+      - { in: path, name: bookId, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [Cart]
+      summary: Set a cart item quantity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [quantity], properties: { quantity: { type: integer, minimum: 1, maximum: 99 } } }
+      responses:
+        '200': { description: Updated cart, content: { application/json: { schema: { $ref: '#/components/schemas/Cart' } } } }
+    delete:
+      tags: [Cart]
+      summary: Remove a cart item
+      responses:
+        '204': { description: Removed }
+  /wishlist:
+    get:
+      tags: [Wishlist]
+      summary: List saved books for the current user
+      responses:
+        '200': { description: Wishlist, content: { application/json: { schema: { type: object, required: [items], properties: { items: { type: array, items: { $ref: '#/components/schemas/Book' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /wishlist/items:
+    post:
+      tags: [Wishlist]
+      summary: Save a published book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [bookId], properties: { bookId: { type: string, format: uuid } } }
+      responses:
+        '200': { description: Updated wishlist, content: { application/json: { schema: { type: object, required: [items], properties: { items: { type: array, items: { $ref: '#/components/schemas/Book' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /wishlist/items/{bookId}:
+    delete:
+      tags: [Wishlist]
+      summary: Remove a saved book
+      parameters:
+        - { in: path, name: bookId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /addresses:
+    get:
+      tags: [Addresses]
+      summary: List saved delivery addresses for the current user
+      responses:
+        '200': { description: Addresses, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Address' } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Addresses]
+      summary: Save a delivery address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddressInput' }
+      responses:
+        '201': { description: Saved address, content: { application/json: { schema: { $ref: '#/components/schemas/Address' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Checkout current cart with COD
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOrder' }
+      responses:
+        '201': { description: Created order, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /orders/me:
+    get:
+      tags: [Orders]
+      summary: List my orders
+      responses:
+        '200': { description: Order list, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Order' } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: View owned order
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Order, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /orders/{id}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel my pending order and restore stock once
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Canceled order, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/books:
+    post:
+      tags: [Admin]
+      summary: Create book as ADMIN (planned)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookWrite' }
+      responses:
+        '201': { description: Book created, content: { application/json: { schema: { $ref: '#/components/schemas/BookDetail' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/books/{id}:
+    patch:
+      tags: [Admin]
+      summary: Edit book (planned)
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookWrite' }
+      responses:
+        '200': { description: Book updated, content: { application/json: { schema: { $ref: '#/components/schemas/BookDetail' } } } }
+  /admin/orders:
+    get:
+      tags: [Admin]
+      summary: Admin orders (planned)
+      parameters:
+        - { in: query, name: status, schema: { $ref: '#/components/schemas/OrderStatus' } }
+      responses:
+        '200': { description: Orders, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Order' } } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/orders/{id}/status:
+    patch:
+      tags: [Admin]
+      summary: Transition order state (planned)
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [status], properties: { status: { $ref: '#/components/schemas/OrderStatus' } } }
+      responses:
+        '200': { description: Updated order, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/inventory/adjustments:
+    post:
+      tags: [Admin]
+      summary: Adjust inventory with audit (planned)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bookId, delta, reason]
+              properties:
+                bookId: { type: string, format: uuid }
+                delta: { type: integer, description: Nonzero signed quantity }
+                reason: { type: string, minLength: 3, maxLength: 255 }
+      responses:
+        '201': { description: Adjustment recorded }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: Get basic operational metrics as ADMIN
+      responses:
+        '200':
+          description: Dashboard summary
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminDashboard' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: bookstore_session
+  responses:
+    BadRequest: { description: Invalid request, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Unauthorized: { description: Not authenticated, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Forbidden: { description: Not authorized, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    NotFound: { description: Not found, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+    Conflict: { description: Conflict, content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } } }
+  schemas:
+    AdminDashboard:
+      type: object
+      required: [metrics, orderStatus, recentOrders]
+      properties:
+        metrics:
+          type: object
+          required: [totalBooks, publishedBooks, lowStockBooks, totalOrders, pendingOrders, deliveredRevenueVnd]
+          properties:
+            totalBooks: { type: integer }
+            publishedBooks: { type: integer }
+            lowStockBooks: { type: integer, description: Published books with stock at or below 5 }
+            totalOrders: { type: integer }
+            pendingOrders: { type: integer }
+            deliveredRevenueVnd: { type: integer, description: Sum of totalVnd for DELIVERED orders only }
+        orderStatus:
+          type: object
+          additionalProperties: { type: integer }
+        recentOrders:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required: [id, orderCode, status, totalVnd, createdAt, customerName, itemCount]
+            properties:
+              id: { type: string, format: uuid }
+              orderCode: { type: string }
+              status: { $ref: '#/components/schemas/OrderStatus' }
+              totalVnd: { type: integer }
+              createdAt: { type: string, format: date-time }
+              customerName: { type: string }
+              itemCount: { type: integer }
+    ApiError:
+      type: object
+      properties:
+        requestId: { type: string }
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: array, items: { type: object } }
+    User:
+      type: object
+      required: [id, email, role]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        fullName: { type: string, nullable: true }
+        role: { type: string, enum: [CUSTOMER, ADMIN] }
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+        fullName: { type: string }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    Category:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+    Book:
+      type: object
+      required: [id, sku, slug, title, priceVnd, stock, status]
+      properties:
+        id: { type: string, format: uuid }
+        sku: { type: string }
+        slug: { type: string }
+        title: { type: string }
+        coverUrl: { type: string, nullable: true }
+        priceVnd: { type: integer, minimum: 0 }
+        salePriceVnd: { type: integer, minimum: 0, nullable: true }
+        stock: { type: integer, minimum: 0 }
+        status: { type: string, enum: [DRAFT, PUBLISHED, ARCHIVED] }
+        category: { $ref: '#/components/schemas/Category' }
+    BookDetail:
+      allOf:
+        - { $ref: '#/components/schemas/Book' }
+        - type: object
+          properties:
+            isbn: { type: string, nullable: true }
+            description: { type: string, nullable: true }
+            bookAuthors:
+              type: array
+              items:
+                type: object
+                properties:
+                  author:
+                    type: object
+                    properties:
+                      name: { type: string }
+    BookWrite:
+      type: object
+      required: [sku, slug, title, categoryId, priceVnd, stock]
+      properties:
+        sku: { type: string }
+        slug: { type: string }
+        title: { type: string }
+        categoryId: { type: string, format: uuid }
+        priceVnd: { type: integer, minimum: 0 }
+        salePriceVnd: { type: integer, minimum: 0, nullable: true }
+        stock: { type: integer, minimum: 0 }
+        status: { type: string, enum: [DRAFT, PUBLISHED, ARCHIVED] }
+    BookPage:
+      type: object
+      required: [items, meta]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Book' }
+        meta:
+          type: object
+          properties:
+            page: { type: integer }
+            limit: { type: integer }
+            total: { type: integer }
+            totalPages: { type: integer }
+    CartItemInput:
+      type: object
+      required: [bookId, quantity]
+      properties:
+        bookId: { type: string, format: uuid }
+        quantity: { type: integer, minimum: 1, maximum: 99 }
+    Cart:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              bookId: { type: string, format: uuid }
+              quantity: { type: integer }
+              unitPriceVnd: { type: integer }
+        estimatedSubtotalVnd: { type: integer }
+    AddressInput:
+      type: object
+      required: [recipientName, phone, line1, city]
+      properties:
+        recipientName: { type: string, minLength: 1, maxLength: 120 }
+        phone: { type: string, minLength: 8, maxLength: 25 }
+        line1: { type: string, minLength: 3, maxLength: 255 }
+        ward: { type: string, nullable: true, maxLength: 120 }
+        district: { type: string, nullable: true, maxLength: 120 }
+        city: { type: string, minLength: 1, maxLength: 120 }
+        isDefault: { type: boolean }
+    Address:
+      allOf:
+        - { $ref: '#/components/schemas/AddressInput' }
+        - type: object
+          required: [id, isDefault]
+          properties:
+            id: { type: string, format: uuid }
+            isDefault: { type: boolean }
+    CreateOrder:
+      type: object
+      required: [addressId, paymentMethod]
+      properties:
+        addressId: { type: string, format: uuid }
+        paymentMethod: { type: string, enum: [COD] }
+        note: { type: string, maxLength: 500 }
+    OrderStatus:
+      type: string
+      enum: [PENDING, CONFIRMED, PACKING, SHIPPING, DELIVERED, CANCELED]
+    Order:
+      type: object
+      required: [id, orderCode, status, paymentMethod, paymentStatus, subtotalVnd, shippingFeeVnd, totalVnd, addressSnapshot, createdAt, items]
+      properties:
+        id: { type: string, format: uuid }
+        orderCode: { type: string }
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        subtotalVnd: { type: integer }
+        shippingFeeVnd: { type: integer }
+        totalVnd: { type: integer }
+        paymentMethod: { type: string, enum: [COD, VNPAY] }
+        paymentStatus: { type: string, enum: [UNPAID, PENDING, PAID, FAILED, REFUNDED] }
+        addressSnapshot: { type: object, additionalProperties: true }
+        note: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              bookId: { type: string, format: uuid }
+              titleSnapshot: { type: string }
+              unitPriceVnd: { type: integer }
+              quantity: { type: integer }
+              lineTotalVnd: { type: integer }
