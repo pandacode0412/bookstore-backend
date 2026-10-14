@@ -23,7 +23,7 @@
 
 **FR-CAT-04 Taxonomy:** Admin tạo/sửa category, đổi `sortOrder`, bật/tắt `isActive`; không hard-delete category có reference. `GET /categories` chỉ trả category active theo `sortOrder`, rồi `name`; response chỉ gồm `id`, `name`, `slug`. Admin xem tất cả category kể cả inactive tại `/admin/categories` và thay đổi dữ liệu qua session ADMIN + CSRF.
 
-**FR-CAT-05 Admin content:** ADMIN quản lý sách (bao gồm status, gallery URL, tác giả và `salePriceVnd`), category và homepage banner. Không hard-delete sách đã có lịch sử; banner public chỉ trả active records. Upload file không nằm trong MVP khi chưa có object storage/quét tệp.
+**FR-CAT-05 Admin content:** ADMIN quản lý sách (bao gồm status, gallery URL, tác giả và `salePriceVnd`), category và homepage banner. Không hard-delete sách đã có lịch sử; banner public chỉ trả active records. ADMIN có thể tải ảnh bìa/gallery/banner qua Cloudinary; endpoint chỉ nhận JPEG/PNG/WebP tối đa 8 MB sau session+CSRF, và trả HTTPS URL cho các field URL hiện hữu.
 
 ## 3. Cart (FR-CART)
 **FR-CART-01:** chỉ Customer authenticated dùng giỏ persistent; một cart trên user; one line per book.

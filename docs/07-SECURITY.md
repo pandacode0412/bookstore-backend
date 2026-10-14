@@ -11,7 +11,7 @@
 - CSRF protection on cookie-authenticated state changes; SameSite alone insufficient for some deployment topologies.
 - CORS exact allowlist; no `*` with credentials; HTTPS outside localhost.
 - SQL via Prisma parameterized queries; avoid raw dynamic SQL.
-- File upload future: content validation, size and MIME, no executable upload, object ACL.
+- Cloudinary upload: only authenticated `ADMIN` requests with a valid CSRF token can enter multipart parsing. The service accepts one JPEG/PNG/WebP up to 8 MB, verifies both MIME and magic bytes, disables caller-controlled filenames/overwrites, stores it in a purpose-scoped Cloudinary folder, and never writes it to the API container. Cloudinary API secrets remain server-only. SVG, GIF, arbitrary resource type, and client-supplied destination folders are rejected. Cloudinary account moderation/malware-retention settings remain an operational responsibility.
 
 ## Sensitive data
 - Store minimal address/contact; mask PII in logs; do not log cookies/passwords/auth headers.

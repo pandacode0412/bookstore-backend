@@ -104,20 +104,40 @@ export class BooksService {
     return book;
   }
 
-  async adminList(pageRaw = '1', limitRaw = '20', q = '', statusRaw = '') {
+  async adminList(pageRaw = '1', limitRaw = '20', q = '', statusRaw = '', categoryIdRaw = '') {
     const page = Number(pageRaw); const limit = Number(limitRaw); const search = q.trim();
-    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 50 || search.length > 100 || (statusRaw && !Object.values(BookStatus).includes(statusRaw as BookStatus))) {
+    const categoryId = categoryIdRaw.trim();
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 50 || search.length > 100 || (statusRaw && !Object.values(BookStatus).includes(statusRaw as BookStatus)) || (categoryId && !UUID_PATTERN.test(categoryId))) {
       throw new BadRequestException('Invalid admin book filters');
     }
     const where: Prisma.BookWhereInput = {
       ...(search ? { OR: [{ title: { contains: search, mode: 'insensitive' } }, { sku: { contains: search, mode: 'insensitive' } }, { slug: { contains: search, mode: 'insensitive' } }] } : {}),
       ...(statusRaw ? { status: statusRaw as BookStatus } : {}),
+      ...(categoryId ? { categoryId } : {}),
     };
     const [items, total] = await this.db.$transaction([
       this.db.book.findMany({ where, select: adminBookSelect, orderBy: { updatedAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
       this.db.book.count({ where }),
     ]);
     return { items, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  }
+
+  async adminSummary() {
+    const [total, published, draft, archived, outOfStock] = await this.db.$transaction([
+      this.db.book.count({ where: {} }),
+      this.db.book.count({ where: { status: BookStatus.PUBLISHED } }),
+      this.db.book.count({ where: { status: BookStatus.DRAFT } }),
+      this.db.book.count({ where: { status: BookStatus.ARCHIVED } }),
+      this.db.book.count({ where: { stock: 0 } }),
+    ]);
+    return { total, published, draft, archived, outOfStock };
+  }
+
+  async adminDetail(rawId: string) {
+    if (!UUID_PATTERN.test(rawId)) throw new BadRequestException('Invalid book id');
+    const book = await this.db.book.findUnique({ where: { id: rawId }, select: adminBookSelect });
+    if (!book) throw new NotFoundException('Book not found');
+    return book;
   }
 
   async adminCreate(input: BookInput) {

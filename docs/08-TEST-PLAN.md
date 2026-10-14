@@ -38,6 +38,7 @@
 | TC-026 | ADMIN banner mutation | Guest/customer denied; inactive banner is absent from `GET /banners`; records sort by display order |
 | TC-027 | ADMIN status transition | Invalid skip rejected; valid transition has actor event; admin cancellation restores stock once |
 | TC-028 | ADMIN customer list | CUSTOMER denied; result never contains passwordHash, sessions or addresses |
+| TC-029 | ADMIN Cloudinary image upload | Guest/customer/invalid CSRF denied before file parsing; only JPEG/PNG/WebP <=8 MB with matching magic bytes are sent to configured Cloudinary; response URL can be saved as book/banner media; missing server config returns 503 without accepting a file |
 
 ## Release gate
 - P0 AC tested and green, lint/typecheck/test commands pass, API contracts reviewed.
@@ -68,6 +69,11 @@
 
 - `test/admin.service.test.mjs` verifies the derived counts, delivered-only revenue, zero-filled order statuses, and safe customer-name fallback for a recent order.
 - Swagger route verification includes `GET /api/admin/dashboard`; manual/API smoke testing must still check `401` without a session and `403` for a CUSTOMER session.
+
+## Implemented media validation checks
+
+- `test/media.service.test.mjs` rejects mismatched image MIME/file-signature combinations and unsupported destination purposes without making a Cloudinary request.
+- A configured-environment integration smoke test remains required to verify Cloudinary credentials and delivery URL availability; never put Cloudinary secrets in test fixtures or the browser bundle.
 
 ## Implemented CSRF cookie check
 

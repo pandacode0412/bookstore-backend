@@ -47,6 +47,18 @@ Backend `.env.example` is read by Compose variable substitution. Never commit `.
 
 `db:seed` can ensure a local admin when both `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are set; Compose passes these values only to the local API service. The current local `.env` uses `admin@gmail.com` with the password supplied for this development workspace. This account must never be used outside local development; replace the example password before sharing an environment.
 
+### Cloudinary media (optional locally, required for upload)
+
+Create a Cloudinary product/environment and copy its values into the uncommitted backend `.env`:
+
+```dotenv
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+```
+
+Restart the API container after changing them. Compose passes these values only to `api`; do not add them to the frontend `.env`. Without all three, the rest of the application works and `POST /api/admin/media/images` returns `503` with a configuration message. Use an ADMIN session to upload an image from `/admin/books` or `/admin/banners`.
+
 ## Troubleshoot
 - Port in use: set `WEB_PORT` for the storefront (for example `WEB_PORT=3001 docker compose up --build`); API and database mappings are `127.0.0.1:4000:4000` and `127.0.0.1:5433:5432`.
 - Next fetch error: verify `api` service, `API_INTERNAL_URL=http://api:4000/api` inside web container.

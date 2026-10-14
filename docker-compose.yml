@@ -28,6 +28,9 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-bookstore}:${DB_PASSWORD:-bookstore_dev_only}@db:5432/${DB_NAME:-bookstore}?schema=public
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
     ports:
       - "127.0.0.1:4000:4000"
     volumes:

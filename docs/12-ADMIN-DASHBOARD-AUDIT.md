@@ -4,7 +4,7 @@
 
 The repositories already shared one PostgreSQL database, cookie-session authentication, `ADMIN`/`CUSTOMER` roles, a public catalog, customer orders, and a read-only `GET /admin/dashboard`. Categories were already manageable by ADMIN. Missing capabilities were book CRUD, banner records/API, admin order operations, a customer-safe directory, an isolated admin shell, and an audit record for sensitive order transitions.
 
-There was no file/object-storage provider, malware scanner, or public upload policy. Direct multipart upload is therefore deliberately **not** exposed: storing files in the API container would be non-durable and unsafe. Banner management accepts a validated HTTPS or storefront-local image URL; an upload endpoint can only be added after a storage provider, MIME/size limits, malware scanning, and ACL policy are approved.
+Cloudinary is the approved durable image provider for ADMIN-originated book cover/gallery and banner uploads. `POST /admin/media/images` is protected by session, CSRF, and role guard before multipart parsing; it accepts one JPEG/PNG/WebP up to 8 MB after MIME and magic-byte validation, then streams it to purpose-scoped Cloudinary storage. The API container never persists an upload. Cloudinary moderation/malware-retention policy is an operational follow-up; SVG and arbitrary files remain unsupported.
 
 ## Delivered API and data model
 

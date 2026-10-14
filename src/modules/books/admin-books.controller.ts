@@ -17,13 +17,23 @@ export class AdminBooksController {
 
   @ApiOperation({ summary: 'List all books as ADMIN, including drafts and archived books' })
   @ApiQuery({ name: 'page', required: false, type: Number }) @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'q', required: false, type: String }) @ApiQuery({ name: 'status', required: false, enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'] })
+  @ApiQuery({ name: 'q', required: false, type: String }) @ApiQuery({ name: 'status', required: false, enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'] }) @ApiQuery({ name: 'categoryId', required: false, format: 'uuid' })
   @ApiOkResponse({ description: 'Paginated administrative book list' }) @ApiUnauthorizedResponse({ description: 'Session required' }) @ApiForbiddenResponse({ description: 'ADMIN role required' })
   @Get()
-  async list(@Query('page') page: string | undefined, @Query('limit') limit: string | undefined, @Query('q') q: string | undefined, @Query('status') status: string | undefined, @Headers('cookie') cookie?: string) {
+  async list(@Query('page') page: string | undefined, @Query('limit') limit: string | undefined, @Query('q') q: string | undefined, @Query('status') status: string | undefined, @Query('categoryId') categoryId: string | undefined, @Headers('cookie') cookie?: string) {
     await this.requireAdmin(cookie);
-    return this.books.adminList(page, limit, q, status);
+    return this.books.adminList(page, limit, q, status, categoryId);
   }
+
+  @ApiOperation({ summary: 'Get live book counts for ADMIN book management' })
+  @ApiOkResponse({ description: 'Administrative book counts by publication and stock status' })
+  @Get('summary')
+  async summary(@Headers('cookie') cookie?: string) { await this.requireAdmin(cookie); return this.books.adminSummary(); }
+
+  @ApiOperation({ summary: 'Get one book as ADMIN, including drafts and archived books' }) @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ description: 'Administrative book detail' }) @ApiBadRequestResponse({ description: 'Invalid book id' }) @ApiNotFoundResponse({ description: 'Book not found' })
+  @Get(':id')
+  async detail(@Param('id') id: string, @Headers('cookie') cookie?: string) { await this.requireAdmin(cookie); return this.books.adminDetail(id); }
 
   @ApiOperation({ summary: 'Create a book as ADMIN' }) @ApiHeader({ name: 'X-CSRF-Token', required: true })
   @ApiCreatedResponse({ description: 'Book created' }) @ApiBadRequestResponse({ description: 'Invalid book payload or CSRF token' }) @ApiConflictResponse({ description: 'SKU, slug, or ISBN already exists' })

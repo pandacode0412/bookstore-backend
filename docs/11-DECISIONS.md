@@ -26,7 +26,7 @@ Use pinned `6.19.3` client/CLI (classic generator) for scaffold compatibility; r
 2. Guest checkout? Default NO; customer logs in.
 3. Multi-address? Default YES, snapshot on order.
 4. Refund/returns? Out-of-scope MVP.
-5. Image storage? Demo URL initially; persistent media storage TBD.
+5. Image storage? Cloudinary is used for ADMIN-originated book cover/gallery and banner uploads. Existing URL fields remain the canonical persistence layer; deletion/lifecycle policy and Cloudinary moderation settings require a later ADR if business needs cleanup automation.
 6. Sales report: Delivered only; refunds out-of-scope.
 7. Admin account bootstrap: provide secure CLI/manual seed, not a hardcoded password.
 

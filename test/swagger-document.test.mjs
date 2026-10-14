@@ -18,11 +18,13 @@ test('generated Swagger document includes every implemented route', async () => 
       '/api/admin/banners',
       '/api/admin/banners/{id}',
       '/api/admin/books',
+      '/api/admin/books/summary',
       '/api/admin/books/{id}',
       '/api/admin/categories',
       '/api/admin/categories/{id}',
       '/api/admin/customers',
       '/api/admin/dashboard',
+      '/api/admin/media/images',
       '/api/admin/orders',
       '/api/admin/orders/{id}/status',
       '/api/auth/login',
@@ -55,8 +57,13 @@ test('generated Swagger document includes every implemented route', async () => 
     assert.ok(document.paths['/api/admin/categories/{id}'].patch);
     assert.ok(document.paths['/api/admin/books'].get);
     assert.ok(document.paths['/api/admin/books'].post);
+    assert.ok(document.paths['/api/admin/books/{id}'].get);
+    assert.ok(document.paths['/api/admin/books/{id}'].patch);
+    assert.ok(document.paths['/api/admin/books/summary'].get);
     assert.ok(document.paths['/api/admin/orders/{id}/status'].patch);
     assert.ok(document.paths['/api/admin/banners'].post);
+    assert.ok(document.paths['/api/admin/media/images'].post);
+    assert.ok(document.paths['/api/admin/media/images'].post.requestBody.content['multipart/form-data']);
   } finally {
     await app.close();
   }

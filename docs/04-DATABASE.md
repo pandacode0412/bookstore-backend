@@ -47,6 +47,7 @@ erDiagram
 - `Order` has a composite unique key `(userId, idempotencyKey)` (UUID từ client) + `requestHash`; therefore one customer can retry safely while the same literal key of another customer does not collide.
 - `Category(isActive, sortOrder, name)` is indexed for the public navigation read path. `isActive` and `sortOrder` are non-destructive defaults (`true`/`0`) so existing category records remain available after the schema update.
 - `Banner(isActive, sortOrder)` is indexed for the public carousel read path. The banner and book-image additions are additive; existing books/categories/orders remain valid.
+- Cloudinary media adds no table or migration: existing `Book.coverUrl`, `BookImage.imageUrl`, and `Banner.imageUrl` store the returned HTTPS delivery URL. Cloudinary public IDs are deliberately not persisted until lifecycle/deletion requirements are approved.
 - `InventoryMovement.sourceKey` unique để ngăn double restore; định dạng `order:<id>:create` / `order:<id>:cancel`.
 
 ## Pricing example

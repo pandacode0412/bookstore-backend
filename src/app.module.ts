@@ -10,6 +10,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { BannersModule } from './modules/banners/banners.module';
+import { MediaModule } from './modules/media/media.module';
 
-@Module({ imports: [PrismaModule, BooksModule, CategoriesModule, AuthModule, CartModule, WishlistModule, AddressesModule, OrdersModule, AdminModule, BannersModule], controllers: [HealthController] })
+@Module({ imports: [PrismaModule, BooksModule, CategoriesModule, AuthModule, CartModule, WishlistModule, AddressesModule, OrdersModule, AdminModule, BannersModule, MediaModule], controllers: [HealthController] })
 export class AppModule {}

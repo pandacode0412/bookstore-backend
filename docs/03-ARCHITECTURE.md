@@ -32,6 +32,7 @@ flowchart LR
 | Inventory | book.stock, movements | atomic reserve/sale/restore, admin adjust |
 | Payments | payment attempts | COD MVP; provider future |
 | Banners | homepage banner records | active public carousel feed; ADMIN create/edit/activate/reorder by validated image URL |
+| Media | ADMIN image ingress | validates multipart image bytes and stores accepted files in Cloudinary; returns delivery URL for existing book/banner URL fields |
 | AdminReporting | derived stats + customer-safe directory | authenticated `ADMIN` dashboard summary and customer list; no credentials exposed |
 
 **Boundaries:** module không truy cập repository nội bộ của module khác trực tiếp. Cross-module phối hợp qua service/public interface. Checkout orchestration do Orders tổ chức, Inventory cung cấp atomic stock primitives trong **một Prisma transaction**.
@@ -52,7 +53,7 @@ docs/
 
 ## 4. API boundary & error contracts
 - JSON/HTTPS; prefix `/api`; versioning khi breaking changes.
-- DTO validation via `class-validator`/`class-transformer` khi build thật.
+- DTO validation via `class-validator`/`class-transformer` khi build thật. The Cloudinary media endpoint is a multipart exception: it validates a fixed form shape, CSRF/ADMIN guard, one-file size limit, accepted MIME, and magic bytes before upload.
 - Error shape `{ "error": { "code": "...", "message": "...", "details": [] }, "requestId": "..." }`.
 - OpenAPI `contracts/openapi.yaml` là contract cho cả repo, PR cập nhật trước khi thay breaking behavior.
 

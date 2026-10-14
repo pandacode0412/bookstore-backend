@@ -43,8 +43,9 @@ After starting the API, use the interactive Swagger UI at `http://localhost:4000
 
 ## Implemented ADMIN operations
 
-- `GET/POST/PATCH /admin/books` lets ADMIN list all statuses and create/edit a book, its ordered image URLs, authors, price/sale price, stock, category and status. SKU/slug/ISBN uniqueness, nonnegative integer VND/stock, sale-price limit, category UUID, URL shape and payload size are validated. There is no hard-delete route; use `ARCHIVED`.
-- `GET/POST/PATCH /admin/banners` manages homepage carousel records. `GET /banners` is public and returns active records only in display order. Image upload is intentionally not implemented: the API accepts only HTTPS or storefront-local asset URLs until durable object storage and upload scanning are specified.
+- `GET /admin/books` lets ADMIN list all statuses with server-side `page`, `limit`, `q`, `status`, and `categoryId` filters. `GET /admin/books/summary` returns live total/published/draft/archived/out-of-stock counts for the management UI; it is not derived from one paginated result. `GET /admin/books/{id}` returns one administrative record for the dedicated edit route. `POST /admin/books` and `PATCH /admin/books/{id}` create/edit a book, its ordered image URLs, authors, price/sale price, stock, category and status. SKU/slug/ISBN uniqueness, nonnegative integer VND/stock, sale-price limit, category UUID, URL shape and payload size are validated. There is no hard-delete route; use `ARCHIVED`.
+- `POST /admin/media/images` is a multipart Cloudinary upload endpoint for ADMIN only. It requires the normal session and CSRF header before file parsing, accepts exactly one JPEG/PNG/WebP no larger than 8 MB, checks both declared MIME type and file signature, and returns a Cloudinary HTTPS URL. It accepts `purpose` `book-cover`, `book-gallery`, or `banner`; the API container keeps no copy. A `503` means the three Cloudinary environment variables are not configured.
+- `GET/POST/PATCH /admin/banners` manages homepage carousel records. `GET /banners` is public and returns active records only in display order. It continues to accept an existing HTTPS or storefront-local URL, including the URL returned by the Cloudinary upload endpoint.
 - `GET /admin/orders` supports paginated status/query filtering. `PATCH /admin/orders/{id}/status` requires CSRF and only permits `PENDING→CONFIRMED/CANCELED`, `CONFIRMED→PACKING/CANCELED`, `PACKING→SHIPPING/CANCELED`, and `SHIPPING→DELIVERED`. ADMIN cancellation atomically restores inventory and records actor/status history.
 - `GET /admin/customers` is paginated/searchable and returns only id, name, email, creation time and order count. Password hashes, session records and addresses are never returned.
 
@@ -54,6 +55,7 @@ After starting the API, use the interactive Swagger UI at `http://localhost:4000
 - Success GET 200, POST create 201, DELETE 204, bad body 400/422, no session 401, role 403, missing 404, conflict 409, unexpected 500.
 - Error: `{error:{code,message,details?},requestId}`; never expose stack traces.
 - Session: `HttpOnly` cookie + CSRF mitigation on state-changing requests. Do not store tokens in localStorage.
+- Media: Cloudinary credentials stay server-side. The frontend sends multipart `FormData` only to `/admin/media/images`, then submits the returned URL through the existing book/banner write contracts.
 - `Idempotency-Key` required for `POST /orders`. Distinct client UUID per checkout attempt.
 
 ## Endpoint matrix
@@ -83,10 +85,12 @@ After starting the API, use the interactive Swagger UI at `http://localhost:4000
 | GET | /orders/me | Customer | my orders |
 | GET | /orders/{id} | Owner/Admin | order detail |
 | POST | /orders/{id}/cancel | Owner if pending | cancel |
-| GET/POST | /admin/books | Admin | list/create books |
-| PATCH | /admin/books/{id} | Admin + CSRF | edit/archive book, pricing, images/authors |
+| GET/POST | /admin/books | Admin | list/create books; list supports `q`, `status`, `categoryId`, pagination |
+| GET | /admin/books/summary | Admin | live count summary for book management |
+| GET/PATCH | /admin/books/{id} | Admin / Admin + CSRF | read/edit/archive one book, pricing, images/authors |
 | GET/POST | /admin/banners | Admin | list/create carousel records |
 | PATCH | /admin/banners/{id} | Admin + CSRF | edit/activate/reorder carousel record |
+| POST | /admin/media/images | Admin + CSRF | Upload JPEG/PNG/WebP (max 8 MB) to Cloudinary and return its HTTPS URL |
 | GET | /admin/orders | Admin | filter paginated orders |
 | PATCH | /admin/orders/{id}/status | Admin + CSRF | valid transition + audit |
 | GET | /admin/customers | Admin | customer-safe searchable directory |
