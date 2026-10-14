@@ -60,6 +60,7 @@ model User {
   wishlistItems       WishlistItem[]
   orders              Order[]
   inventoryActions    InventoryMovement[] @relation("MovementActor")
+  orderStatusActions  OrderStatusEvent[] @relation("OrderStatusActor")
   sessions            Session[]
 }
 
@@ -95,9 +96,14 @@ model Category {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
   slug      String   @unique
+  description String? @db.Text
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
   books     Book[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder, name])
 }
 
 model Author {
@@ -122,6 +128,7 @@ model Book {
   categoryId      String               @db.Uuid
   category        Category             @relation(fields: [categoryId], references: [id])
   bookAuthors     BookAuthor[]
+  images          BookImage[]
   cartItems       CartItem[]
   wishlistItems   WishlistItem[]
   orderItems      OrderItem[]
@@ -131,6 +138,32 @@ model Book {
 
   @@index([status, createdAt])
   @@index([categoryId, status])
+}
+
+model BookImage {
+  id        String   @id @default(uuid()) @db.Uuid
+  bookId    String   @db.Uuid
+  imageUrl  String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId, sortOrder])
+}
+
+model Banner {
+  id             String   @id @default(uuid()) @db.Uuid
+  title          String
+  altText        String
+  imageUrl       String
+  href           String   @default("/books")
+  objectPosition String   @default("center center")
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }
 
 model BookAuthor {
@@ -191,12 +224,28 @@ model Order {
   items                 OrderItem[]
   payments              Payment[]
   inventoryMovements    InventoryMovement[]
+  statusEvents          OrderStatusEvent[]
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@unique([userId, idempotencyKey])
+}
+
+model OrderStatusEvent {
+  id         String      @id @default(uuid()) @db.Uuid
+  orderId    String      @db.Uuid
+  actorId    String?     @db.Uuid
+  fromStatus OrderStatus
+  toStatus   OrderStatus
+  reason     String?
+  createdAt  DateTime    @default(now())
+  order      Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actor      User?       @relation("OrderStatusActor", fields: [actorId], references: [id])
+
+  @@index([orderId, createdAt])
+  @@index([actorId, createdAt])
 }
 
 model OrderItem {

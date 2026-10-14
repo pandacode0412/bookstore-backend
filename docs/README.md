@@ -15,6 +15,7 @@
 | `09-DELIVERY-PLAN.md` | Milestones, tickets, definition of done |
 | `10-OPERATIONS-DEV.md` | Docker Compose local dev, env, migrations, troubleshooting |
 | `11-DECISIONS.md` | ADRs, assumptions, open questions |
+| `12-ADMIN-DASHBOARD-AUDIT.md` | Audit, delivered admin scope, storage/promotion decisions |
 | `../contracts/openapi.yaml` | Machine-readable API planned contract |
 | `../prisma/schema.prisma` | Executable Prisma models |
 

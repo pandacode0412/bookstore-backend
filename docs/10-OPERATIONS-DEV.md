@@ -27,6 +27,10 @@ curl http://localhost:4000/api/docs-json
 
 Interactive API documentation: `http://localhost:4000/api/docs` (Swagger UI). The generated JSON and YAML are at `/api/docs-json` and `/api/docs-yaml`; use the checked-in `contracts/openapi.yaml` for the full planned contract.
 
+## Category schema update (development)
+
+Category management adds non-destructive `Category.isActive` (default `true`) and `Category.sortOrder` (default `0`) columns plus a public-navigation index. The Compose API startup already runs `prisma db push`; restart the `api` service after pulling this change. Before production, create and review a committed Prisma migration rather than using `db push`.
+
 ## Lifecycle
 ```bash
 docker compose ps

@@ -25,14 +25,17 @@ erDiagram
 |---|---|---|
 | User | id UUID, email unique, passwordHash, role | không trả passwordHash |
 | Address | id, userId, recipientName, phone, line1, city, district, ward | ownable; order copy snapshot |
-| Category | id, name, slug unique | parentCategory future |
+| Category | id, name, slug unique, description?, isActive, sortOrder | Public storefront only exposes active records; sorted by `sortOrder`, then name; inactive records are retained for admin management |
 | Author | id, name | ISBN not author identifier |
 | Book | id, sku unique, isbn nullable unique, slug unique, title, priceVnd, salePriceVnd, stock, status | soft archive, price integer |
+| BookImage | id, bookId, imageUrl, sortOrder | optional ordered gallery; removed with its book only |
+| Banner | id, title, altText, imageUrl, href, objectPosition, isActive, sortOrder | active records feed homepage carousel |
 | BookAuthor | (bookId,authorId) composite PK | N:N |
 | Cart | id, userId unique | một cart/user |
 | CartItem | (cartId,bookId) unique, quantity | server validates |
 | Order | id, orderCode unique, userId, status, paymentMethod, subtotalVnd, shippingFeeVnd, totalVnd, addressSnapshot JSON, idempotencyKey | immutable totals after placed |
 | OrderItem | id, orderId, bookId, sku/title snapshots, unitPriceVnd, quantity, lineTotalVnd | historical snapshots |
+| OrderStatusEvent | orderId, actorId?, fromStatus, toStatus, reason?, createdAt | audit trail for admin status operations |
 | Payment | id, orderId, method, status, providerTxnId nullable unique | not card data |
 | InventoryMovement | id, bookId, orderId?, delta, reason, sourceKey unique | positive/negative movements |
 
@@ -42,6 +45,8 @@ erDiagram
 - `book.stock >= 0`, `cartItem.quantity > 0`, `orderItem.quantity > 0`; dùng DB CHECK trong migration.
 - Index `Book(status,createdAt)`, `Book(categoryId,status)`, `Order(userId,createdAt)`, `Order(status,createdAt)`, `InventoryMovement(bookId,createdAt)`.
 - `Order` has a composite unique key `(userId, idempotencyKey)` (UUID từ client) + `requestHash`; therefore one customer can retry safely while the same literal key of another customer does not collide.
+- `Category(isActive, sortOrder, name)` is indexed for the public navigation read path. `isActive` and `sortOrder` are non-destructive defaults (`true`/`0`) so existing category records remain available after the schema update.
+- `Banner(isActive, sortOrder)` is indexed for the public carousel read path. The banner and book-image additions are additive; existing books/categories/orders remain valid.
 - `InventoryMovement.sourceKey` unique để ngăn double restore; định dạng `order:<id>:create` / `order:<id>:cancel`.
 
 ## Pricing example

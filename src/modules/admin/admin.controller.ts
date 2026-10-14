@@ -1,5 +1,5 @@
-import { Controller, ForbiddenException, Get, Headers } from '@nestjs/common';
-import { ApiCookieAuth, ApiForbiddenResponse, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { BadRequestException, Controller, ForbiddenException, Get, Headers, Query } from '@nestjs/common';
+import { ApiCookieAuth, ApiForbiddenResponse, ApiOkResponse, ApiOperation, ApiQuery, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { AuthService } from '../auth/auth.service';
 import { AdminService } from './admin.service';
 
@@ -33,5 +33,18 @@ export class AdminController {
     const user = await this.auth.me(cookie);
     if (user.role !== 'ADMIN') throw new ForbiddenException('Administrator access required');
     return this.admin.dashboard();
+  }
+
+  @ApiOperation({ summary: 'List customers as ADMIN without credentials or session data' })
+  @ApiQuery({ name: 'page', required: false, type: Number }) @ApiQuery({ name: 'limit', required: false, type: Number }) @ApiQuery({ name: 'q', required: false, type: String })
+  @ApiOkResponse({ description: 'Paginated customer-safe records' }) @ApiUnauthorizedResponse({ description: 'Session required' }) @ApiForbiddenResponse({ description: 'ADMIN role required' })
+  @Get('customers')
+  async customers(@Query('page') page: string | undefined, @Query('limit') limit: string | undefined, @Query('q') q: string | undefined, @Headers('cookie') cookie?: string) {
+    const user = await this.auth.me(cookie);
+    if (user.role !== 'ADMIN') throw new ForbiddenException('Administrator access required');
+    try { return await this.admin.customers(page, limit, q); } catch (error) {
+      if (error instanceof Error && error.message === 'Invalid customer filters') throw new BadRequestException(error.message);
+      throw error;
+    }
   }
 }

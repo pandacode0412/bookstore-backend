@@ -12,7 +12,7 @@
     "db:sync": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
-    "test": "npm run build && node --test test/catalog.service.test.mjs test/auth.service.test.mjs test/orders.service.test.mjs test/wishlist.service.test.mjs test/admin.service.test.mjs test/swagger-document.test.mjs"
+    "test": "npm run build && node --test test/catalog.service.test.mjs test/categories.service.test.mjs test/auth.service.test.mjs test/orders.service.test.mjs test/wishlist.service.test.mjs test/admin.service.test.mjs test/swagger-document.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",

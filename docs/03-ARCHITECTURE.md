@@ -26,12 +26,13 @@ flowchart LR
 |---|---|---|
 | Auth | users, sessions, permissions | register/login/me/logout |
 | Wishlist | customer saved books | list/add/remove wishlist items |
-| Catalog | books, authors, categories | list/detail + admin CRUD |
+| Catalog | books, authors, categories, book images | public list/detail; ADMIN book/category management; soft archive via status |
 | Cart | cart/cartItems | manage cart lines |
-| Orders | orders/orderItems/address snapshots | checkout/history/transitions |
+| Orders | orders/orderItems/address snapshots/status events | checkout/history; ADMIN state transitions with actor audit |
 | Inventory | book.stock, movements | atomic reserve/sale/restore, admin adjust |
 | Payments | payment attempts | COD MVP; provider future |
-| AdminReporting | derived stats | authenticated `ADMIN` dashboard summary (implemented); catalog/order/inventory mutation endpoints remain backlog |
+| Banners | homepage banner records | active public carousel feed; ADMIN create/edit/activate/reorder by validated image URL |
+| AdminReporting | derived stats + customer-safe directory | authenticated `ADMIN` dashboard summary and customer list; no credentials exposed |
 
 **Boundaries:** module không truy cập repository nội bộ của module khác trực tiếp. Cross-module phối hợp qua service/public interface. Checkout orchestration do Orders tổ chức, Inventory cung cấp atomic stock primitives trong **một Prisma transaction**.
 

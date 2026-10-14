@@ -30,6 +30,14 @@
 | TC-018 | Product status DRAFT / ARCHIVED | not public catalog |
 | TC-019 | UI at 360px and 1440px | no overflow; usable controls |
 | TC-020 | CSRF attack on cookie endpoint | rejected |
+| TC-021 | `GET /books?sort=bestselling` | Only DELIVERED order quantities affect ranking; descending quantity with stable tie-breaker |
+| TC-022 | `GET /books?onSale=true` | Only published books with a configured sale price are returned |
+| TC-023 | `GET /categories` | Only active records, ordered by sortOrder then name; no admin fields exposed |
+| TC-024 | Admin category create/update | CUSTOMER gets 403; invalid payload/duplicate slug rejected; inactive category disappears from public list |
+| TC-025 | ADMIN book create/edit/archive | Invalid price/stock/sale price/URL rejected; customer receives 403; archive disappears from public catalog |
+| TC-026 | ADMIN banner mutation | Guest/customer denied; inactive banner is absent from `GET /banners`; records sort by display order |
+| TC-027 | ADMIN status transition | Invalid skip rejected; valid transition has actor event; admin cancellation restores stock once |
+| TC-028 | ADMIN customer list | CUSTOMER denied; result never contains passwordHash, sessions or addresses |
 
 ## Release gate
 - P0 AC tested and green, lint/typecheck/test commands pass, API contracts reviewed.
@@ -43,7 +51,8 @@
 
 ## Implemented catalog unit checks
 - `npm test` builds the backend then runs catalog and Swagger-document checks with Node's built-in test runner.
-- It verifies query construction for title/category/base-price sorting, rejects invalid public query values, verifies the public category visibility condition, and verifies the generated Swagger route/cookie-security metadata.
+- It verifies query construction for title/category/base-price sorting, promotion filtering, delivered-order bestseller ranking, rejects invalid public query values, verifies the public category visibility condition, and verifies the generated Swagger route/cookie-security metadata.
+- Category service tests cover active/sorted public navigation records and validated admin create/update data; Swagger tests include the ADMIN category routes.
 - API-level catalog checks and database-backed integration tests remain part of QA-001.
 
 ## Implemented auth checks

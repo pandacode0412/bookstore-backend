@@ -1,6 +1,6 @@
 # REST API Specification (v1.0)
 
-**Base URL dev:** `http://localhost:4000/api`. **Machine contract:** `../contracts/openapi.yaml`. Public catalog, session auth, cart, saved delivery addresses, customer COD orders, and the read-only ADMIN dashboard are implemented; admin mutation routes remain planned.
+**Base URL dev:** `http://localhost:4000/api`. **Machine contract:** `../contracts/openapi.yaml`. Public catalog/banner feed, session auth, cart, saved delivery addresses, customer COD orders, and the ADMIN dashboard/content operations below are implemented.
 
 ## Swagger (implemented endpoints)
 
@@ -41,6 +41,13 @@ After starting the API, use the interactive Swagger UI at `http://localhost:4000
 - It is read-only and returns book counts, published low-stock count (published books with stock `<= 5`), order totals, status distribution, and the five newest orders.
 - `deliveredRevenueVnd` is the sum of `totalVnd` only for `DELIVERED` orders. It is not projected revenue from pending, cancelled, or shipping orders.
 
+## Implemented ADMIN operations
+
+- `GET/POST/PATCH /admin/books` lets ADMIN list all statuses and create/edit a book, its ordered image URLs, authors, price/sale price, stock, category and status. SKU/slug/ISBN uniqueness, nonnegative integer VND/stock, sale-price limit, category UUID, URL shape and payload size are validated. There is no hard-delete route; use `ARCHIVED`.
+- `GET/POST/PATCH /admin/banners` manages homepage carousel records. `GET /banners` is public and returns active records only in display order. Image upload is intentionally not implemented: the API accepts only HTTPS or storefront-local asset URLs until durable object storage and upload scanning are specified.
+- `GET /admin/orders` supports paginated status/query filtering. `PATCH /admin/orders/{id}/status` requires CSRF and only permits `PENDING→CONFIRMED/CANCELED`, `CONFIRMED→PACKING/CANCELED`, `PACKING→SHIPPING/CANCELED`, and `SHIPPING→DELIVERED`. ADMIN cancellation atomically restores inventory and records actor/status history.
+- `GET /admin/customers` is paginated/searchable and returns only id, name, email, creation time and order count. Password hashes, session records and addresses are never returned.
+
 ## Conventions
 - JSON camelCase, ids UUID (book slug string), RFC3339/ISO 8601 timestamps UTC, amounts integer `VND`.
 - Collections: `?page=1&limit=12`; response `{items:[...],meta:{page,limit,total,totalPages}}`.
@@ -57,9 +64,13 @@ After starting the API, use the interactive Swagger UI at `http://localhost:4000
 | POST | /auth/login | Public | set session cookie |
 | POST | /auth/logout | Customer/Admin | invalidate session |
 | GET | /auth/me | Customer/Admin | profile |
-| GET | /books | Public | Search title, filter category, sort and paginate published books |
+| GET | /books | Public | Search title, filter category/on-sale, sort and paginate published books; `bestselling` counts DELIVERED quantities only |
 | GET | /books/{slug} | Public | detail |
-| GET | /categories | Public | Categories that currently have a published book |
+| GET | /categories | Public | Active categories, ordered by `sortOrder` then name; returns only id/name/slug |
+| GET | /banners | Public | Active homepage banners, ordered by display order |
+| GET | /admin/categories | Admin | List every category, including inactive and display order |
+| POST | /admin/categories | Admin + CSRF | Create a category |
+| PATCH | /admin/categories/{id} | Admin + CSRF | Edit name/slug, activate/deactivate, or change sort order |
 | GET | /cart | Customer | cart + totals |
 | POST | /cart/items | Customer | add/upsert |
 | PATCH | /cart/items/{bookId} | Customer | quantity change |
@@ -72,10 +83,13 @@ After starting the API, use the interactive Swagger UI at `http://localhost:4000
 | GET | /orders/me | Customer | my orders |
 | GET | /orders/{id} | Owner/Admin | order detail |
 | POST | /orders/{id}/cancel | Owner if pending | cancel |
-| POST | /admin/books | Admin | create book |
-| PATCH | /admin/books/{id} | Admin | edit |
-| GET | /admin/orders | Admin | filter orders |
-| PATCH | /admin/orders/{id}/status | Admin | transition |
+| GET/POST | /admin/books | Admin | list/create books |
+| PATCH | /admin/books/{id} | Admin + CSRF | edit/archive book, pricing, images/authors |
+| GET/POST | /admin/banners | Admin | list/create carousel records |
+| PATCH | /admin/banners/{id} | Admin + CSRF | edit/activate/reorder carousel record |
+| GET | /admin/orders | Admin | filter paginated orders |
+| PATCH | /admin/orders/{id}/status | Admin + CSRF | valid transition + audit |
+| GET | /admin/customers | Admin | customer-safe searchable directory |
 | POST | /admin/inventory/adjustments | Admin | manual stock adjustment |
 | GET | /admin/dashboard | Admin | implemented read-only totals, delivered revenue, status distribution and newest orders |
 
@@ -102,7 +116,7 @@ Header: `Idempotency-Key: <client-uuid>`. Result `201` `{id,orderCode,status,pay
 ## Validation & authorization
 - UUID/schema/body whitelist; reject unknown fields if strict mode decided.
 - 1 <= quantity <= 99; price never accepted from web client; same owner enforced on address/order.
-- Search input trimmed, length <=100; page/limit max 50; category is a lowercase slug; sort whitelist. Price sorting is by `priceVnd` (base price), with newest first to break ties.
+- Search input trimmed, length <=100; page/limit max 50; category is a lowercase slug; sort whitelist includes `bestselling`; `onSale` accepts only literal `true`. Price sorting is by `priceVnd` (base price), with newest first to break ties. Bestselling ranking only sums quantities from `DELIVERED` orders, and promotion filtering only returns books with `salePriceVnd` configured.
 - Admin operations require authenticated ADMIN; make 403 even if FE hides button.
 
 ## API lifecycle

@@ -25,6 +25,16 @@ async function main() {
       create: { ...book, status: BookStatus.PUBLISHED },
     });
   }
+  const banners = [
+    { title: 'Bộ sách độc quyền Omega+', altText: 'Bộ sách Đấu ấn 10 năm Omega+', imageUrl: '/banner/omega_slide.webp', href: '/books', sortOrder: 1 },
+    { title: 'Khuyến mãi sách hay', altText: 'Sách hay tháng 10, giảm tới 40%', imageUrl: '/banner/banner_1920x600__52__e4802bee2e6649ff93f9390e7d009d22.webp', href: '/books?onSale=true', sortOrder: 2 },
+    { title: 'Sách ẩm thực bán chạy', altText: '101 tựa sách ẩm thực bán chạy', imageUrl: '/banner/stt-ban-sach-5.jpg', href: '/books?sort=bestselling', sortOrder: 3 },
+  ];
+  for (const banner of banners) {
+    const existingBanner = await prisma.banner.findFirst({ where: { imageUrl: banner.imageUrl } });
+    if (existingBanner) await prisma.banner.update({ where: { id: existingBanner.id }, data: banner });
+    else await prisma.banner.create({ data: banner });
+  }
   const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD;
   if (adminEmail && adminPassword) {
@@ -36,7 +46,7 @@ async function main() {
     });
     console.log(`Development admin ensured: ${adminEmail}`);
   }
-  console.log('Demo seed complete: 2 categories, 3 books (idempotent).');
+  console.log('Demo seed complete: categories, books, and homepage banners (idempotent).');
 }
 main().catch(e => { console.error(e); process.exitCode = 1; })
   .finally(async () => prisma.$disconnect());

@@ -15,13 +15,15 @@
 **FR-AUTH-04 Me:** `GET /api/auth/me` trả id, email, fullName, role; không có secret.
 
 ## 2. Book catalog (FR-CAT)
-**FR-CAT-01 List:** chỉ `PUBLISHED` ở public; `page`, `limit`, `q`, `category`, `sort` (`newest`, `price_asc`, `price_desc`). Mặc định page=1, limit=12, limit<=50. AC: empty => `{items:[], meta...}`.
+**FR-CAT-01 List:** chỉ `PUBLISHED` ở public; `page`, `limit`, `q`, `category`, `sort` (`newest`, `price_asc`, `price_desc`, `bestselling`) và `onSale=true`. Mặc định page=1, limit=12, limit<=50. `bestselling` chỉ cộng `OrderItem.quantity` của đơn `DELIVERED`, không tính giỏ hàng, đơn PENDING hoặc đơn bị hủy. `onSale=true` chỉ lấy sách có `salePriceVnd`. AC: empty => `{items:[], meta...}`.
 
 **FR-CAT-02 Detail:** lấy theo slug; unpublished => public 404.
 
 **FR-CAT-03 Book admin:** thêm/sửa/archive/đổi status, validate SKU/slug unique, giá VND >=0, giá giảm <= giá gốc, tồn kho không âm; nên không hard-delete sách từng được đặt.
 
-**FR-CAT-04 Taxonomy:** admin CRUD category, author; không xóa hard nếu còn references; chọn soft archive/deactivate.
+**FR-CAT-04 Taxonomy:** Admin tạo/sửa category, đổi `sortOrder`, bật/tắt `isActive`; không hard-delete category có reference. `GET /categories` chỉ trả category active theo `sortOrder`, rồi `name`; response chỉ gồm `id`, `name`, `slug`. Admin xem tất cả category kể cả inactive tại `/admin/categories` và thay đổi dữ liệu qua session ADMIN + CSRF.
+
+**FR-CAT-05 Admin content:** ADMIN quản lý sách (bao gồm status, gallery URL, tác giả và `salePriceVnd`), category và homepage banner. Không hard-delete sách đã có lịch sử; banner public chỉ trả active records. Upload file không nằm trong MVP khi chưa có object storage/quét tệp.
 
 ## 3. Cart (FR-CART)
 **FR-CART-01:** chỉ Customer authenticated dùng giỏ persistent; một cart trên user; one line per book.
@@ -42,6 +44,8 @@
 **FR-ORDER-05:** khách xem list/detail đơn mình; khách có thể cancel khi PENDING. Cancel thành công restore stock exactly once.
 
 **FR-ORDER-06:** admin filter list/order detail và chuyển trạng thái với state machine ở `06-BUSINESS-FLOWS.md`.
+
+**FR-ADMIN-01 Customer directory:** ADMIN có thể tìm kiếm customer-safe directory; không trả password hash, token, session, hoặc dữ liệu nhạy cảm không phục vụ vận hành.
 
 ## 5. Inventory (FR-INV)
 **FR-INV-01:** admin tăng/giảm với reason, actor, change log; không cho giảm dưới 0.

@@ -7,9 +7,9 @@ import { CategoriesService } from './categories.service';
 export class CategoriesController {
   constructor(private readonly categories: CategoriesService) {}
 
-  @ApiOperation({ summary: 'List categories with published books' })
+  @ApiOperation({ summary: 'List active storefront categories ordered by sortOrder then name' })
   @ApiOkResponse({
-    description: 'Public category list',
+    description: 'Active public category list',
     schema: { example: [{ id: 'uuid', name: 'Lập trình', slug: 'lap-trinh' }] },
   })
   @Get()

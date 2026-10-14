@@ -9,7 +9,7 @@
 
 ## M1 — Catalog / Auth
 - [x] BE-001 Register/login/logout/me with opaque HttpOnly session persistence
-- [ ] BE-002 Admin category/author/book CRUD + validators
+- [~] BE-002 Admin category/book CRUD + validators — implemented; standalone author CRUD remains unneeded because book editing resolves controlled author names.
 - [x] BE-003 Public book query paging/filter/detail (manual/typecheck verification; automated API tests remain QA-001)
 - [x] FE-001 Storefront search/filter/detail + loading/empty/error states (manual/typecheck verification; E2E remains QA-002)
 - [x] FE-002 Login/register UI/session-aware navigation
@@ -23,8 +23,8 @@
 ## M3 — Admin / Inventory
 - [ ] BE-007 Order transitions/cancel restore and status audit
 - [ ] BE-008 Manual inventory adjustments + movements
-- [ ] BE-009 Admin summary stats
-- [ ] FE-004 Admin books/categories/orders/dashboard
+- [x] BE-009 Admin summary stats — delivered metrics, status counts, newest orders, customer count and delivered-order top sellers.
+- [x] FE-004 Admin books/categories/orders/dashboard — isolated responsive admin shell and real category/book/banner/order/customer modules implemented.
 
 ## M4 — Harden / Release
 - [ ] SEC-001 CSRF/CORS/session security, rate limits and abuse checks

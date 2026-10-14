@@ -15,11 +15,21 @@ test('generated Swagger document includes every implemented route', async () => 
       .build());
     assert.deepEqual(Object.keys(document.paths).sort(), [
       '/api/addresses',
+      '/api/admin/banners',
+      '/api/admin/banners/{id}',
+      '/api/admin/books',
+      '/api/admin/books/{id}',
+      '/api/admin/categories',
+      '/api/admin/categories/{id}',
+      '/api/admin/customers',
       '/api/admin/dashboard',
+      '/api/admin/orders',
+      '/api/admin/orders/{id}/status',
       '/api/auth/login',
       '/api/auth/logout',
       '/api/auth/me',
       '/api/auth/register',
+      '/api/banners',
       '/api/books',
       '/api/books/{slug}',
       '/api/cart',
@@ -37,6 +47,16 @@ test('generated Swagger document includes every implemented route', async () => 
     ]);
     assert.equal(document.components.securitySchemes.sessionCookie.in, 'cookie');
     assert.equal(document.components.securitySchemes.sessionCookie.name, 'bookstore_session');
+    const bookParameters = document.paths['/api/books'].get.parameters;
+    assert.deepEqual(bookParameters.find((parameter) => parameter.name === 'sort').schema.enum, ['newest', 'price_asc', 'price_desc', 'bestselling']);
+    assert.deepEqual(bookParameters.find((parameter) => parameter.name === 'onSale').schema.enum, ['true']);
+    assert.ok(document.paths['/api/admin/categories'].get);
+    assert.ok(document.paths['/api/admin/categories'].post);
+    assert.ok(document.paths['/api/admin/categories/{id}'].patch);
+    assert.ok(document.paths['/api/admin/books'].get);
+    assert.ok(document.paths['/api/admin/books'].post);
+    assert.ok(document.paths['/api/admin/orders/{id}/status'].patch);
+    assert.ok(document.paths['/api/admin/banners'].post);
   } finally {
     await app.close();
   }

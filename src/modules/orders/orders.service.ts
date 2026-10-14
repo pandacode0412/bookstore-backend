@@ -6,6 +6,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const orderInclude = { items: { orderBy: { id: 'asc' as const } }, payments: { select: { status: true } } } as const;
 type OrderWithItems = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
+const adminOrderInclude = { ...orderInclude, user: { select: { id: true, fullName: true, email: true } }, statusEvents: { orderBy: { createdAt: 'desc' as const }, take: 20, select: { id: true, fromStatus: true, toStatus: true, reason: true, createdAt: true, actor: { select: { fullName: true, email: true } } } } } as const;
+type AdminOrderWithItems = Prisma.OrderGetPayload<{ include: typeof adminOrderInclude }>;
 
 @Injectable()
 export class OrdersService {
@@ -97,6 +99,46 @@ export class OrdersService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
+  async adminList(pageRaw = '1', limitRaw = '20', statusRaw = '', queryRaw = '') {
+    const page = Number(pageRaw); const limit = Number(limitRaw); const query = queryRaw.trim();
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 50 || query.length > 100 || (statusRaw && !Object.values(OrderStatus).includes(statusRaw as OrderStatus))) {
+      throw new BadRequestException('Invalid admin order filters');
+    }
+    const where: Prisma.OrderWhereInput = {
+      ...(statusRaw ? { status: statusRaw as OrderStatus } : {}),
+      ...(query ? { OR: [{ orderCode: { contains: query, mode: 'insensitive' } }, { user: { email: { contains: query, mode: 'insensitive' } } }, { user: { fullName: { contains: query, mode: 'insensitive' } } }] } : {}),
+    };
+    const [items, total] = await this.db.$transaction([
+      this.db.order.findMany({ where, include: adminOrderInclude, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.db.order.count({ where }),
+    ]);
+    return { items: items.map(order => this.adminPresent(order)), meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  }
+
+  async adminTransition(actorId: string, rawId: unknown, body: Record<string, unknown>) {
+    const id = this.orderId(rawId);
+    if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(key => !['status', 'reason'].includes(key)) || typeof body.status !== 'string' || !Object.values(OrderStatus).includes(body.status as OrderStatus) || (body.reason !== undefined && (typeof body.reason !== 'string' || body.reason.trim().length > 500))) {
+      throw new BadRequestException('Invalid order status payload');
+    }
+    const next = body.status as OrderStatus; const reason = typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : null;
+    return this.db.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({ where: { id }, include: adminOrderInclude });
+      if (!order) throw new NotFoundException('Order not found');
+      if (order.status === next) return this.adminPresent(order);
+      if (!this.isValidAdminTransition(order.status, next)) throw new ConflictException(`Cannot transition ${order.status} to ${next}`);
+      const updated = await tx.order.updateMany({ where: { id, status: order.status }, data: { status: next } });
+      if (updated.count !== 1) throw new ConflictException('Order status changed; reload and try again');
+      await tx.orderStatusEvent.create({ data: { orderId: id, actorId, fromStatus: order.status, toStatus: next, reason } });
+      if (next === OrderStatus.CANCELED) {
+        for (const item of order.items) {
+          await tx.book.update({ where: { id: item.bookId }, data: { stock: { increment: item.quantity } } });
+          await tx.inventoryMovement.create({ data: { bookId: item.bookId, orderId: id, actorId, delta: item.quantity, reason: 'ORDER_CANCELED', sourceKey: `order:${id}:admin-cancel:${item.bookId}`, note: reason } });
+        }
+      }
+      return this.adminPresent({ ...order, status: next });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
   private checkoutInput(body: Record<string, unknown>) {
     const addressId = this.orderId(body.addressId, 'Invalid delivery address id');
     if (body.paymentMethod !== 'COD') throw new BadRequestException('Only COD is available');
@@ -117,6 +159,20 @@ export class OrdersService {
   }
   private present(order: OrderWithItems) {
     return { id: order.id, orderCode: order.orderCode, status: order.status, paymentMethod: order.paymentMethod, paymentStatus: order.payments[0]?.status ?? PaymentStatus.UNPAID, subtotalVnd: order.subtotalVnd, shippingFeeVnd: order.shippingFeeVnd, totalVnd: order.totalVnd, addressSnapshot: order.addressSnapshot, note: order.note, createdAt: order.createdAt, items: order.items.map(({ bookId, skuSnapshot, titleSnapshot, unitPriceVnd, quantity, lineTotalVnd }) => ({ bookId, skuSnapshot, titleSnapshot, unitPriceVnd, quantity, lineTotalVnd })) };
+  }
+  private adminPresent(order: AdminOrderWithItems) {
+    return { ...this.present(order), customer: order.user, statusHistory: order.statusEvents.map(event => ({ id: event.id, fromStatus: event.fromStatus, toStatus: event.toStatus, reason: event.reason, createdAt: event.createdAt, actorName: event.actor?.fullName || event.actor?.email || 'Hệ thống' })) };
+  }
+  private isValidAdminTransition(current: OrderStatus, next: OrderStatus) {
+    const allowed: Record<OrderStatus, OrderStatus[]> = {
+      PENDING: [OrderStatus.CONFIRMED, OrderStatus.CANCELED],
+      CONFIRMED: [OrderStatus.PACKING, OrderStatus.CANCELED],
+      PACKING: [OrderStatus.SHIPPING, OrderStatus.CANCELED],
+      SHIPPING: [OrderStatus.DELIVERED],
+      DELIVERED: [],
+      CANCELED: [],
+    };
+    return allowed[current].includes(next);
   }
   private isUniqueError(error: unknown) { return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'; }
 }
